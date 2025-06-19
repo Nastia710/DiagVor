@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DiagVor"
         mc:Ignorable="d"
-        Title="Діаграма вороного" Height="600" Width="930">
+        Title="Діаграма Вороного" Height="600" Width="930">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -23,7 +23,7 @@
                 <ComboBoxItem Content="Манхеттенська"/>
                 <ComboBoxItem Content="Чебишева"/>
             </ComboBox>
-            <Button Content="Побудувати" Width="120" Click="BuildVoronoi_Click" Margin="0,0,5,0"/>
+            <Button Content="Генерувати точки" Width="120" Click="GeneratePoints_Click" Margin="0,0,5,0"/>
             <TextBlock Text="Кількість точок:" VerticalAlignment="Center" Margin="5,0,0,0"/>
             <TextBox x:Name="NumPoints" Width="50" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalAlignment="Center"/>
             

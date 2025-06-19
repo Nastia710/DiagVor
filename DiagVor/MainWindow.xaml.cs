@@ -15,16 +15,51 @@ namespace DiagVor
     {
         private const double PointRadius = 3;
         private List<Ellipse> points;
+        private Random random;
 
         public MainWindow()
         {
             InitializeComponent();
             points = new List<Ellipse>();
+            random = new Random();
         }
 
-        private void BuildVoronoi_Click(object sender, RoutedEventArgs e)
+        private void GeneratePoints_Click(object sender, RoutedEventArgs e)
         {
+            if (!int.TryParse(NumPoints.Text, out int numberOfPoints) || numberOfPoints <= 0)
+            {
+                MessageBox.Show("Будь ласка, введіть додатне число точок", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
+            Canvas.Children.Clear();
+            points.Clear();
+
+            double canvasWidth = Canvas.ActualWidth;
+            double canvasHeight = Canvas.ActualHeight;
+
+            for (int i = 0; i < numberOfPoints; i++)
+            {
+                double x = random.NextDouble() * (canvasWidth - 2 * PointRadius) + PointRadius;
+                double y = random.NextDouble() * (canvasHeight - 2 * PointRadius) + PointRadius;
+
+                var point = new Ellipse
+                {
+                    Width = PointRadius * 2,
+                    Height = PointRadius * 2,
+                    Fill = Brushes.Blue,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1
+                };
+
+                Canvas.SetLeft(point, x - PointRadius);
+                Canvas.SetTop(point, y - PointRadius);
+
+                Canvas.Children.Add(point);
+                points.Add(point);
+            }
+
+            NumPoints.Text = points.Count.ToString();
         }
 
         private void Canvas_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -81,7 +116,6 @@ namespace DiagVor
         {
             Canvas.Children.Clear();
             points.Clear();
-            NumPoints.Text = "0";
         }
 
         private void GenerateSingleThread_Click(object sender, RoutedEventArgs e)
@@ -91,7 +125,7 @@ namespace DiagVor
 
         private void GenerateMultiThread_Click(object sender, RoutedEventArgs e)
         {
-            
+
         }
     }
 }
