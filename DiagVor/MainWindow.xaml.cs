@@ -1,13 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 namespace DiagVor
 {
+    public class PointWithColor
+    {
+        public Point Point { get; set; }
+        public Color Color { get; set; }
+    }
+
     public enum Metric
     {
         Euclid,
@@ -15,21 +23,140 @@ namespace DiagVor
         MaxDistance
     }
 
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private const double PointRadius = 3;
         private List<Ellipse> points;
+        private List<PointWithColor> coloredPoints;
         private Random random;
         private Metric selectedMetric;
+        private WriteableBitmap writeableBitmap;
 
         public MainWindow()
         {
             InitializeComponent();
             points = new List<Ellipse>();
+            coloredPoints = new List<PointWithColor>();
             random = new Random();
+        }
+
+        private void InitializeWriteableBitmap()
+        {
+            if (Canvas.ActualWidth <= 0 || Canvas.ActualHeight <= 0) return;
+            writeableBitmap = new WriteableBitmap(
+                (int)Canvas.ActualWidth,
+                (int)Canvas.ActualHeight,
+                96, 96,
+                PixelFormats.Bgr32,
+                null);
+            Canvas.Background = new ImageBrush(writeableBitmap);
+        }
+
+        private double CalculateDistance(double[] point1, double[] point2)
+        {
+            switch (GetSelectedMetric())
+            {
+                case Metric.Euclid:
+                    return Math.Sqrt(Math.Pow(point1[0] - point2[0], 2) + Math.Pow(point1[1] - point2[1], 2));
+                case Metric.Manhattan:
+                    return Math.Abs(point1[0] - point2[0]) + Math.Abs(point1[1] - point2[1]);
+                case Metric.MaxDistance:
+                    return Math.Max(Math.Abs(point1[0] - point2[0]), Math.Abs(point1[1] - point2[1]));
+                default:
+                    throw new NotImplementedException("Метрика не реалізована.");
+            }
+        }
+
+        private void ConvertPointsToColoredPoints()
+        {
+            coloredPoints.Clear();
+            foreach (var ellipse in points)
+            {
+                coloredPoints.Add(new PointWithColor
+                {
+                    Point = new Point(
+                        Canvas.GetLeft(ellipse) + PointRadius,
+                        Canvas.GetTop(ellipse) + PointRadius
+                    ),
+                    Color = Color.FromRgb(
+                        (byte)random.Next(64, 256),
+                        (byte)random.Next(64, 256),
+                        (byte)random.Next(64, 256)
+                    )
+                });
+            }
+        }
+
+        private void CreateSingleThread()
+        {
+            if (writeableBitmap == null) InitializeWriteableBitmap();
+            if (writeableBitmap == null) return;
+
+            int width = writeableBitmap.PixelWidth;
+            int height = writeableBitmap.PixelHeight;
+            int stride = width * 4;
+            byte[] pixels = new byte[height * stride];
+
+            ConvertPointsToColoredPoints();
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    double minDistance = double.MaxValue;
+                    Color pixelColor = Colors.White;
+
+                    foreach (var point in coloredPoints)
+                    {
+                        double distance = CalculateDistance(
+                            new double[] { x, y },
+                            new double[] { point.Point.X, point.Point.Y }
+                        );
+
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            pixelColor = point.Color;
+                        }
+                    }
+
+                    int index = y * stride + x * 4;
+                    pixels[index] = pixelColor.B;
+                    pixels[index + 1] = pixelColor.G;
+                    pixels[index + 2] = pixelColor.R;
+                    pixels[index + 3] = 255;
+                }
+            }
+
+            writeableBitmap.WritePixels(
+                new Int32Rect(0, 0, width, height),
+                pixels,
+                stride,
+                0
+            );
+        }
+
+        private void GenerateSingleThread_Click(object sender, RoutedEventArgs e)
+        {
+            if (MetricsComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Будь ласка, виберіть метрику перед побудовою діаграми", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            selectedMetric = GetSelectedMetric();
+
+            var stopwatch = Stopwatch.StartNew();
+            var cpuStartTime = Process.GetCurrentProcess().TotalProcessorTime;
+
+            CreateSingleThread();
+
+            stopwatch.Stop();
+            var cpuEndTime = Process.GetCurrentProcess().TotalProcessorTime;
+
+            textBlockTime.Text = $"Однопотоково:\n" +
+                                $"- Реальний час: {stopwatch.ElapsedMilliseconds} мс\n" +
+                                $"- Процесорний час: {(cpuEndTime - cpuStartTime).TotalMilliseconds:F1} мс";
         }
 
         private Metric GetSelectedMetric()
@@ -48,21 +175,6 @@ namespace DiagVor
                 "Максимальної відстані" => Metric.MaxDistance,
                 _ => Metric.Euclid
             };
-        }
-
-        private double CalculateDistance(double[] point1, double[] point2)
-        {
-            switch (GetSelectedMetric())
-            {
-                case Metric.Euclid:
-                    return Math.Sqrt(Math.Pow(point1[0] - point2[0], 2) + Math.Pow(point1[1] - point2[1], 2));
-                case Metric.Manhattan:
-                    return Math.Abs(point1[0] - point2[0]) + Math.Abs(point1[1] - point2[1]);
-                case Metric.MaxDistance:
-                    return Math.Max(Math.Abs(point1[0] - point2[0]), Math.Abs(point1[1] - point2[1]));
-                default:
-                    throw new NotImplementedException("Метрика не реалізована.");
-            }
         }
 
         private void GeneratePoints_Click(object sender, RoutedEventArgs e)
@@ -157,16 +269,6 @@ namespace DiagVor
         {
             Canvas.Children.Clear();
             points.Clear();
-        }
-
-        private void GenerateSingleThread_Click(object sender, RoutedEventArgs e)
-        {
-            if (MetricsComboBox.SelectedItem == null)
-            {
-                MessageBox.Show("Будь ласка, виберіть метрику перед побудовою діаграми", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            selectedMetric = GetSelectedMetric();
         }
 
         private void GenerateMultiThread_Click(object sender, RoutedEventArgs e)
