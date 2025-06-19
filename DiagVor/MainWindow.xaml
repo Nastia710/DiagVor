@@ -9,10 +9,12 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="50"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,10,10,10">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,10,10,5">
+            
             <Button Content="Однопоточний" Width="154" Click="GenerateSingleThread_Click" Margin="0,0,5,0"/>
             <Button Content="Багатопоточний" Width="140" Click="GenerateMultiThread_Click" Margin="0,0,5,0"/>
             <Button Content="Видалити всі точки" Width="120" Click="ClearPoints_Click" Margin="0,0,5,0"/>
@@ -21,12 +23,15 @@
                 <ComboBoxItem Content="Манхеттенська"/>
                 <ComboBoxItem Content="Чебишева"/>
             </ComboBox>
+            <Button Content="Побудувати" Width="120" Click="BuildVoronoi_Click" Margin="0,0,5,0"/>
             <TextBlock Text="Кількість точок:" VerticalAlignment="Center" Margin="5,0,0,0"/>
             <TextBox x:Name="NumPoints" Width="50" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalAlignment="Center"/>
+            
             <TextBlock x:Name="Time" Text="" VerticalAlignment="Center" Margin="5,0,0,0"/>
-            <TextBlock x:Name="textBlockTime" FontWeight="Bold" TextWrapping="Wrap" Width="200" Margin="10,0,0,0"/>
         </StackPanel>
 
-        <Image Grid.Row="1" Name="VoronoiImage" Margin="5,44,5,5" Stretch="Fill" MouseLeftButtonDown="VoronoiImage_MouseLeftButtonDown"/>
+        <TextBlock Grid.Row="1" x:Name="textBlockTime" FontWeight="Bold" TextWrapping="Wrap" Margin="10,0,10,5"/>
+
+        <Canvas x:Name="Canvas" Grid.Row="2" Background="White" Margin="10,10,10,10" PreviewMouseLeftButtonDown="Canvas_PreviewMouseLeftButtonDown"/>
     </Grid>
 </Window>
