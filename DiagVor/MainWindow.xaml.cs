@@ -8,6 +8,13 @@ using System.Windows.Shapes;
 
 namespace DiagVor
 {
+    public enum Metric
+    {
+        Euclid,
+        Manhattan,
+        MaxDistance
+    }
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -16,12 +23,46 @@ namespace DiagVor
         private const double PointRadius = 3;
         private List<Ellipse> points;
         private Random random;
+        private Metric selectedMetric;
 
         public MainWindow()
         {
             InitializeComponent();
             points = new List<Ellipse>();
             random = new Random();
+        }
+
+        private Metric GetSelectedMetric()
+        {
+            if (MetricsComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Будь ласка, виберіть метрику", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return Metric.Euclid;
+            }
+
+            string metricText = ((ComboBoxItem)MetricsComboBox.SelectedItem).Content.ToString();
+            return metricText switch
+            {
+                "Евклідова" => Metric.Euclid,
+                "Манхеттенська" => Metric.Manhattan,
+                "Максимальної відстані" => Metric.MaxDistance,
+                _ => Metric.Euclid
+            };
+        }
+
+        private double CalculateDistance(double[] point1, double[] point2)
+        {
+            switch (GetSelectedMetric())
+            {
+                case Metric.Euclid:
+                    return Math.Sqrt(Math.Pow(point1[0] - point2[0], 2) + Math.Pow(point1[1] - point2[1], 2));
+                case Metric.Manhattan:
+                    return Math.Abs(point1[0] - point2[0]) + Math.Abs(point1[1] - point2[1]);
+                case Metric.MaxDistance:
+                    return Math.Max(Math.Abs(point1[0] - point2[0]), Math.Abs(point1[1] - point2[1]));
+                default:
+                    throw new NotImplementedException("Метрика не реалізована.");
+            }
         }
 
         private void GeneratePoints_Click(object sender, RoutedEventArgs e)
@@ -120,12 +161,22 @@ namespace DiagVor
 
         private void GenerateSingleThread_Click(object sender, RoutedEventArgs e)
         {
-
+            if (MetricsComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Будь ласка, виберіть метрику перед побудовою діаграми", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            selectedMetric = GetSelectedMetric();
         }
 
         private void GenerateMultiThread_Click(object sender, RoutedEventArgs e)
         {
-
+            if (MetricsComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Будь ласка, виберіть метрику перед побудовою діаграми", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            selectedMetric = GetSelectedMetric();
         }
     }
 }
