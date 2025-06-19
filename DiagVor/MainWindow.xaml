@@ -5,8 +5,28 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DiagVor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Діаграма вороного" Height="600" Width="930">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
 
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,10,10,10">
+            <Button Content="Однопоточний" Width="154" Click="GenerateSingleThread_Click" Margin="0,0,5,0"/>
+            <Button Content="Багатопоточний" Width="140" Click="GenerateMultiThread_Click" Margin="0,0,5,0"/>
+            <Button Content="Видалити всі точки" Width="120" Click="ClearPoints_Click" Margin="0,0,5,0"/>
+            <ComboBox x:Name="MetricsComboBox" Width="120" Margin="0,0,5,0">
+                <ComboBoxItem Content="Евклідова"/>
+                <ComboBoxItem Content="Манхеттенська"/>
+                <ComboBoxItem Content="Чебишева"/>
+            </ComboBox>
+            <TextBlock Text="Кількість точок:" VerticalAlignment="Center" Margin="5,0,0,0"/>
+            <TextBox x:Name="NumPoints" Width="50" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="Time" Text="" VerticalAlignment="Center" Margin="5,0,0,0"/>
+            <TextBlock x:Name="textBlockTime" FontWeight="Bold" TextWrapping="Wrap" Width="200" Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <Image Grid.Row="1" Name="VoronoiImage" Margin="5,44,5,5" Stretch="Fill" MouseLeftButtonDown="VoronoiImage_MouseLeftButtonDown"/>
     </Grid>
 </Window>
