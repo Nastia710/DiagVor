@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -31,6 +32,7 @@ namespace DiagVor
         private Random random;
         private Metric selectedMetric;
         private WriteableBitmap writeableBitmap;
+        private readonly object lockObject = new object();
 
         public MainWindow()
         {
@@ -65,6 +67,11 @@ namespace DiagVor
                 default:
                     throw new NotImplementedException("Метрика не реалізована.");
             }
+        }
+
+        private double CalculateEuclideanDistance(double[] point1, double[] point2)
+        {
+            return Math.Sqrt(Math.Pow(point1[0] - point2[0], 2) + Math.Pow(point1[1] - point2[1], 2));
         }
 
         private void ConvertPointsToColoredPoints()
@@ -136,6 +143,73 @@ namespace DiagVor
             );
         }
 
+        private void CreateMultiThread()
+        {
+            if (writeableBitmap == null) InitializeWriteableBitmap();
+            if (writeableBitmap == null) return;
+
+            int width = writeableBitmap.PixelWidth;
+            int height = writeableBitmap.PixelHeight;
+            int stride = width * 4;
+            byte[] pixels = new byte[height * stride];
+
+            ConvertPointsToColoredPoints();
+
+            int numThreads = Environment.ProcessorCount;
+            int rowsPerThread = height / numThreads;
+
+            var tasks = new Task[numThreads];
+            for (int i = 0; i < numThreads; i++)
+            {
+                int startY = i * rowsPerThread;
+                int endY = (i == numThreads - 1) ? height : (i + 1) * rowsPerThread;
+
+                tasks[i] = Task.Run(() =>
+                {
+                    for (int y = startY; y < endY; y++)
+                    {
+                        for (int x = 0; x < width; x++)
+                        {
+                            double minDistance = double.MaxValue;
+                            Color pixelColor = Colors.White;
+
+                            foreach (var point in coloredPoints)
+                            {
+                                double distance = CalculateEuclideanDistance(
+                                    new double[] { x, y },
+                                    new double[] { point.Point.X, point.Point.Y }
+                                );
+
+                                if (distance < minDistance)
+                                {
+                                    minDistance = distance;
+                                    pixelColor = point.Color;
+                                }
+                            }
+
+                            int index = y * stride + x * 4;
+                            lock (lockObject)
+                            {
+                                pixels[index] = pixelColor.B;
+                                pixels[index + 1] = pixelColor.G;
+                                pixels[index + 2] = pixelColor.R;
+                                pixels[index + 3] = 255;
+                            }
+                        }
+                    }
+                });
+            }
+
+            Task.WaitAll(tasks);
+
+            writeableBitmap.WritePixels(
+                new Int32Rect(0, 0, width, height),
+                pixels,
+                stride,
+                0
+            );
+        }
+
         private void GenerateSingleThread_Click(object sender, RoutedEventArgs e)
         {
             if (MetricsComboBox.SelectedItem == null)
@@ -145,18 +219,31 @@ namespace DiagVor
             }
 
             selectedMetric = GetSelectedMetric();
+            
+            var stopwatch = Stopwatch.StartNew();
+            var cpuStartTime = Process.GetCurrentProcess().TotalProcessorTime;
+            
+            CreateSingleThread();
+            
+            stopwatch.Stop();
+            var cpuEndTime = Process.GetCurrentProcess().TotalProcessorTime;
+            
+            textBlockTime.Text = $"Однопотоково: - Реальний час: {stopwatch.ElapsedMilliseconds} мс; - Процесорний час: {(cpuEndTime - cpuStartTime).TotalMilliseconds:F1} мс";
+        }
+
+        private void GenerateMultiThread_Click(object sender, RoutedEventArgs e)
+        {
+            MetricsComboBox.SelectedIndex = 0;
 
             var stopwatch = Stopwatch.StartNew();
             var cpuStartTime = Process.GetCurrentProcess().TotalProcessorTime;
-
-            CreateSingleThread();
-
+            
+            CreateMultiThread();
+            
             stopwatch.Stop();
             var cpuEndTime = Process.GetCurrentProcess().TotalProcessorTime;
-
-            textBlockTime.Text = $"Однопотоково:\n" +
-                                $"- Реальний час: {stopwatch.ElapsedMilliseconds} мс\n" +
-                                $"- Процесорний час: {(cpuEndTime - cpuStartTime).TotalMilliseconds:F1} мс";
+            
+            textBlockTime.Text = $"Багатопотоково ({Environment.ProcessorCount} потоків): - Реальний час: {stopwatch.ElapsedMilliseconds} мс; - Процесорний час: {(cpuEndTime - cpuStartTime).TotalMilliseconds:F1} мс";
         }
 
         private Metric GetSelectedMetric()
@@ -164,7 +251,7 @@ namespace DiagVor
             if (MetricsComboBox.SelectedItem == null)
             {
                 MessageBox.Show("Будь ласка, виберіть метрику", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return Metric.Euclid;
+                
             }
 
             string metricText = ((ComboBoxItem)MetricsComboBox.SelectedItem).Content.ToString();
@@ -172,8 +259,7 @@ namespace DiagVor
             {
                 "Евклідова" => Metric.Euclid,
                 "Манхеттенська" => Metric.Manhattan,
-                "Максимальної відстані" => Metric.MaxDistance,
-                _ => Metric.Euclid
+                "Max відстані" => Metric.MaxDistance
             };
         }
 
@@ -200,9 +286,7 @@ namespace DiagVor
                 {
                     Width = PointRadius * 2,
                     Height = PointRadius * 2,
-                    Fill = Brushes.Blue,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1
+                    Fill = Brushes.Black
                 };
 
                 Canvas.SetLeft(point, x - PointRadius);
@@ -251,9 +335,7 @@ namespace DiagVor
                 {
                     Width = PointRadius * 2,
                     Height = PointRadius * 2,
-                    Fill = Brushes.Blue,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1
+                    Fill = Brushes.Black
                 };
 
                 Canvas.SetLeft(point, clickPosition.X - PointRadius);
@@ -269,16 +351,6 @@ namespace DiagVor
         {
             Canvas.Children.Clear();
             points.Clear();
-        }
-
-        private void GenerateMultiThread_Click(object sender, RoutedEventArgs e)
-        {
-            if (MetricsComboBox.SelectedItem == null)
-            {
-                MessageBox.Show("Будь ласка, виберіть метрику перед побудовою діаграми", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            selectedMetric = GetSelectedMetric();
         }
     }
 }

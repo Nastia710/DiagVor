@@ -21,7 +21,7 @@
             <ComboBox x:Name="MetricsComboBox" Width="120" Margin="0,0,5,0">
                 <ComboBoxItem Content="Евклідова"/>
                 <ComboBoxItem Content="Манхеттенська"/>
-                <ComboBoxItem Content="Максимальної відстані"/>
+                <ComboBoxItem Content="Max відстані"/>
             </ComboBox>
             <Button Content="Генерувати точки" Width="120" Click="GeneratePoints_Click" Margin="0,0,5,0"/>
             <TextBlock Text="Кількість точок:" VerticalAlignment="Center" Margin="5,0,0,0"/>
